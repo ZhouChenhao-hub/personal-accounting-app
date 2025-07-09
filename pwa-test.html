@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA 安装测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .status-item {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #ccc;
+        }
+        .success { border-left-color: #28a745; background: #d4edda; }
+        .warning { border-left-color: #ffc107; background: #fff3cd; }
+        .error { border-left-color: #dc3545; background: #f8d7da; }
+        .btn {
+            background: #0d6efd;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover { background: #0b5ed7; }
+        .btn:disabled { background: #6c757d; cursor: not-allowed; }
+        pre { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 5px; 
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>💰 PWA 安装测试</h1>
+    
+    <div id="status-container">
+        <h2>检查 PWA 安装条件</h2>
+        <div id="status-list"></div>
+    </div>
+    
+    <div>
+        <h2>手动操作</h2>
+        <button id="installBtn" class="btn" onclick="manualInstall()" disabled>手动安装 PWA</button>
+        <button id="checkBtn" class="btn" onclick="checkPWAStatus()">重新检查</button>
+        <button id="clearBtn" class="btn" onclick="clearData()">清除缓存</button>
+    </div>
+    
+    <div>
+        <h2>调试信息</h2>
+        <pre id="debug-info"></pre>
+    </div>
+
+    <script>
+        let deferredPrompt = null;
+        let debugInfo = [];
+
+        function log(message) {
+            debugInfo.push(`[${new Date().toLocaleTimeString()}] ${message}`);
+            document.getElementById('debug-info').textContent = debugInfo.join('\n');
+            console.log(message);
+        }
+
+        function addStatus(message, type = 'info') {
+            const statusList = document.getElementById('status-list');
+            const item = document.createElement('div');
+            item.className = `status-item ${type}`;
+            item.textContent = message;
+            statusList.appendChild(item);
+        }
+
+        function clearStatus() {
+            document.getElementById('status-list').innerHTML = '';
+        }
+
+        async function checkPWAStatus() {
+            clearStatus();
+            log('开始检查 PWA 状态...');
+
+            // 检查 HTTPS
+            if (location.protocol === 'https:' || location.hostname === 'localhost') {
+                addStatus('✅ HTTPS 或 localhost - 正常', 'success');
+            } else {
+                addStatus('❌ 需要 HTTPS 或 localhost', 'error');
+            }
+
+            // 检查 Service Worker 支持
+            if ('serviceWorker' in navigator) {
+                addStatus('✅ Service Worker 支持 - 正常', 'success');
+                
+                try {
+                    const registration = await navigator.serviceWorker.register('./sw.js');
+                    addStatus('✅ Service Worker 注册成功', 'success');
+                    log(`Service Worker 注册成功: ${registration.scope}`);
+                } catch (error) {
+                    addStatus('❌ Service Worker 注册失败: ' + error.message, 'error');
+                    log(`Service Worker 注册失败: ${error}`);
+                }
+            } else {
+                addStatus('❌ 浏览器不支持 Service Worker', 'error');
+            }
+
+            // 检查 manifest
+            try {
+                const response = await fetch('./manifest.json');
+                if (response.ok) {
+                    const manifest = await response.json();
+                    addStatus('✅ Manifest 文件可访问', 'success');
+                    log('Manifest 内容: ' + JSON.stringify(manifest, null, 2));
+                } else {
+                    addStatus('❌ Manifest 文件无法访问', 'error');
+                }
+            } catch (error) {
+                addStatus('❌ Manifest 获取失败: ' + error.message, 'error');
+            }
+
+            // 检查图标
+            const iconSizes = ['192', '512'];
+            for (const size of iconSizes) {
+                try {
+                    const response = await fetch(`./icon-${size}.png`);
+                    if (response.ok) {
+                        addStatus(`✅ 图标 ${size}x${size} 存在`, 'success');
+                    } else {
+                        addStatus(`❌ 图标 ${size}x${size} 不存在`, 'error');
+                    }
+                } catch (error) {
+                    addStatus(`❌ 图标 ${size}x${size} 检查失败`, 'error');
+                }
+            }
+
+            // 检查是否已安装
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                addStatus('✅ 应用已安装（standalone 模式）', 'success');
+            } else {
+                addStatus('ℹ️ 应用未安装', 'warning');
+            }
+
+            // 检查安装提示
+            if (deferredPrompt) {
+                addStatus('✅ 安装提示已准备', 'success');
+                document.getElementById('installBtn').disabled = false;
+            } else {
+                addStatus('⚠️ 安装提示未准备（可能已安装或条件不满足）', 'warning');
+            }
+        }
+
+        function manualInstall() {
+            if (deferredPrompt) {
+                log('触发安装提示...');
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        log('用户接受了安装');
+                        addStatus('✅ 用户同意安装', 'success');
+                    } else {
+                        log('用户拒绝了安装');
+                        addStatus('❌ 用户拒绝安装', 'warning');
+                    }
+                    deferredPrompt = null;
+                    document.getElementById('installBtn').disabled = true;
+                });
+            } else {
+                alert('安装提示不可用。请确保满足所有 PWA 条件。');
+            }
+        }
+
+        async function clearData() {
+            log('清除缓存数据...');
+            
+            // 清除 Service Worker 缓存
+            if ('serviceWorker' in navigator) {
+                const cacheNames = await caches.keys();
+                for (const cacheName of cacheNames) {
+                    await caches.delete(cacheName);
+                    log(`已删除缓存: ${cacheName}`);
+                }
+                
+                // 卸载 Service Worker
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (const registration of registrations) {
+                    await registration.unregister();
+                    log('已卸载 Service Worker');
+                }
+            }
+            
+            // 清除本地存储
+            localStorage.clear();
+            sessionStorage.clear();
+            log('已清除本地存储');
+            
+            alert('缓存已清除，页面将重新加载');
+            window.location.reload();
+        }
+
+        // 监听安装提示事件
+        window.addEventListener('beforeinstallprompt', (e) => {
+            log('收到安装提示事件');
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installBtn').disabled = false;
+            addStatus('✅ 安装提示已捕获', 'success');
+        });
+
+        // 监听安装完成事件
+        window.addEventListener('appinstalled', (evt) => {
+            log('应用安装完成');
+            addStatus('✅ 应用安装成功！', 'success');
+            deferredPrompt = null;
+            document.getElementById('installBtn').disabled = true;
+        });
+
+        // 页面加载时自动检查
+        window.addEventListener('load', () => {
+            checkPWAStatus();
+        });
+    </script>
+</body>
+</html> 

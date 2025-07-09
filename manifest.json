@@ -1,0 +1,71 @@
+{
+  "name": "个人记账本",
+  "short_name": "记账本",
+  "description": "简洁高效的个人财务管理系统",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0d6efd",
+  "orientation": "portrait",
+  "categories": ["finance", "productivity", "business"],
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-512.png", 
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png", 
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+
+  "shortcuts": [
+    {
+      "name": "添加交易",
+      "short_name": "添加",
+      "description": "快速添加一笔交易记录",
+      "url": "./?action=add",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "查看统计",
+      "short_name": "统计",
+      "description": "查看收支统计和图表",
+      "url": "./?action=dashboard",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "scope": "./",
+  "id": "accounting-app",
+  "version": "1.0.1"
+} 
